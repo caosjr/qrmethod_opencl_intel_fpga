@@ -54,7 +54,23 @@
 *~
 *example*
 *sopc_*
-# *.sdc # I want those timing files
+*.sdc # I want those timing files
+.log
+*.log
+*.xml
+*.attrib
+*.txt
+*.rpt
+*.qsf
+*.orig
+*.smsg
+*.summary
+*.qpf
+*.qdf
+*.v
+*.qsys
+*.aoco
+*.aocx
 
 # ignore Quartus II generated folders
 */db/
