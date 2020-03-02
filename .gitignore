@@ -69,6 +69,8 @@
 *.qdf
 *.v
 *.qsys
+*.aoco
+*.aocx
 
 # ignore Quartus II generated folders
 */db/
