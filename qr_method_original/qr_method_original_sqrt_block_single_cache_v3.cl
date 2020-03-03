@@ -2,7 +2,7 @@
 
 __kernel
 __attribute__((reqd_work_group_size(1,1,1)))
-void qrmethod(__global double* restrict dataQ, __global double* restrict dataR){
+void qr_method(__global double* restrict dataQ, __global double* restrict dataR){
 
     unsigned int i, j, k, m, matrix_id;
     const unsigned int TAM = 47, TAM2 = 2209, matrix_block_size = 143585;

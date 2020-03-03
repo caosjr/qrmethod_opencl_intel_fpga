@@ -2,7 +2,7 @@
 
 __kernel
 __attribute__((reqd_work_group_size(1,1,1)))
-void qrmethod(__global double* restrict dataQ, __global double* restrict dataR){
+void qr_method(__global double* restrict dataQ, __global double* restrict dataR){
 
     unsigned int i, j, k, m;
     const unsigned int TAM = 47, TAM2 = 2209;
