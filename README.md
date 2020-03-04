@@ -42,5 +42,7 @@ You can execute it like any other executable binary, in our case (in Linux):
 
 ./program
 
+**LARA Script**
 
+There is a lara script to convert the functions into dataflow graph (Initial development).
 
