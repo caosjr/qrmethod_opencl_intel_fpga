@@ -1,0 +1,200 @@
+import weaver.WeaverJps;
+import weaver.Query;
+
+/*
+aspectdef DataFlowGraphLauncher
+
+    for(var $function of WeaverJps.search('function')) {
+        println("Function: " + $function.name);
+        
+        //println("FUNCTION AST: " + $function.ast) ;
+        
+        call StaticCallGraph($function);
+    }
+
+end
+*/
+
+aspectdef DataFlowGraph
+/*
+    input
+        $function
+    end
+*/
+	// Utility object that counts tuples
+	var callGraph = {};
+
+    var writeTable = {};
+
+    var functionMap = {"dot_product":"dp", "qr_method":"qr"};
+
+    //for(var $stmt of WeaverJps.searchFrom($function, 'statement')) {
+    for(var element of WeaverJps.search('function').search('statement').chain()) {
+
+        
+        var $stmt = element['statement'];
+        var $function = element['function'];
+        //var $function = undefined;        
+        
+        if($stmt.astName === "ExprStmt") {
+            var $firstChild = $stmt.child(0);
+            //println("KIND: " + $firstChild.kind);
+            //println("IS ASSIGN? " + $firstChild.kind.endsWith("assign"));
+            //println("AST NAME: " + $firstChild.astName);
+            //println("IS INSTANCE: " + $firstChild.instanceOf("binaryOp"));
+            if($firstChild.instanceOf("binaryOp")  && $firstChild.kind.endsWith("assign")) {
+                println("STMT: " + $stmt.code);
+
+
+                var rightVarrefs = [];
+                for(var $varref of Query.searchFrom($firstChild.right, 'varref')) {
+                    if($varref.type.astName === "FunctionProtoType"){
+                        continue;
+                    }            
+                    
+                    var name = getNodeName($varref.name, writeTable, $function, functionMap);
+/*                    
+                    var name = $varref.name;
+                    if(writeTable[name] !== undefined) {
+                        name = name + "_" + writeTable[name];
+                    }
+  */                  
+                    rightVarrefs.push(name);
+                }
+                
+            
+                var writtenVar = "WRITE_VAR_REF_NOT_FOUND";
+                println("LEFT USE: " + $firstChild.left.code);
+                println("LEFT AST: " + $firstChild.left.ast);
+                //println("LEFT USE: " + $firstChild.left.use);
+                for(var $varref of Query.searchFromInclusive($firstChild.left, 'expression')) {
+                    println("LEFT VARREF: " + $varref.code);
+                    println("USE: " + $varref.use);                    
+                    if($varref.use === "write" || $varref.use === "readwrite") {
+                        //println("Varref type: " + $varref.joinPointType);
+                        writtenVar = getName($varref);
+                        break;
+                    }
+                }
+                
+                if(writeTable[writtenVar] === undefined) {
+                   writeTable[writtenVar] = 0; 
+                }
+                writeTable[writtenVar]++;
+                
+                //println("VARREFS: " + rightVarrefs);
+            
+                //println("Right: " + $firstChild.right.ast);
+            
+                for(var readVar of rightVarrefs) {
+
+                    var startNode = readVar;
+                    var endNode = getNodeName(writtenVar, writeTable, $function, functionMap);
+
+                    if(callGraph[startNode] === undefined) {
+                        callGraph[startNode] = {};
+                    }
+                    if(callGraph[startNode][endNode] === undefined) {
+                        callGraph[startNode][endNode] = 0;
+                    }
+                    
+                    callGraph[startNode][endNode]++;
+
+
+/*
+                    if(callGraph[readVar] === undefined) {
+                        callGraph[readVar] = {};
+                    }
+                    if(callGraph[readVar][writtenVar + "_" + writeTable[writtenVar]] === undefined) {
+                        callGraph[readVar][writtenVar + "_" + writeTable[writtenVar]] = 0;
+                    }
+                    
+                    callGraph[readVar][writtenVar + "_" + writeTable[writtenVar]]++;
+  */                  
+                }
+            /*
+                if(callGraph[$firstChild.right.code] === undefined) {
+                    callGraph[$firstChild.right.code] = {};
+                }
+                callGraph[$firstChild.right.code][$firstChild.left.code] = "";
+                */
+            }
+
+        }
+        
+
+        //println("Type: " + $stmt.astName);                        
+    }
+/*
+    select stmt end
+    apply
+//        if($stmt.astName === "ExprStmt") {
+        println("STMT: " + $stmt.code);
+        println("Type: " + $stmt.astName);            
+ //       }
+
+
+    end
+*/    
+	
+	/*
+	// Collect information 
+	select function.call end
+	apply
+		// Test 1st key
+		if(!($function.signature in callGraph)) {
+			callGraph[$function.signature] = {};
+		}
+
+		// Test 2nd key
+		if(!($call.signature in callGraph[$function.signature])){
+			callGraph[$function.signature][$call.signature] = 0;
+		}
+
+		// Increment
+		callGraph[$function.signature][$call.signature]++;
+	end
+*/
+	// Create graph in dot format (Graphviz) and print it to the console
+	println('// Copy this code, open the web page http://webgraphviz.com/, paste the code and click Generate Graph!');
+	println('digraph static_call_graph {\n');
+	
+	for (f in callGraph) {
+		for (c in callGraph[f]) {		
+			println('\t"' + f + '"->"' + c + '" [label="' + callGraph[f][c] + '"];');
+		}
+	}
+	
+	println('}');
+end
+
+
+function getNodeName(name, writeTable, $function, functionMap) {
+    var number = writeTable[name];
+    if(number === undefined) {
+        number = 0;
+    }
+    
+    var nodeName = name + "_" + number;
+    
+    if($function !== undefined) {
+        var mapping = functionMap[$function.name];
+        mapping = mapping === undefined ? $function.name : mapping;
+        nodeName = mapping + ": " + nodeName;
+    }
+    
+    return nodeName;
+}
+
+function getName($expr) {
+    
+    if($expr.joinPointType === "arrayAccess") {
+        return $expr.arrayVar.name;
+    }
+
+                        
+    return $expr.name;
+    
+
+}
+
